@@ -1,7 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "./icons";
 import { buildLayout, normalizeCells, rectangleCells } from "./layout";
-import type { BuildSettings, Cell, EditorTool, SavedProject, Variant } from "./types";
+import type { BuildSettings, Cell, CloudProject, EditorTool, SavedProject, Variant } from "./types";
+import { useAuth } from "./auth/AuthContext";
+import { AuthModal } from "./components/AuthModal";
+import { ProjectsModal } from "./components/ProjectsModal";
 
 const STORAGE_KEY = "mor-room-planner:project:v1";
 const HISTORY_LIMIT = 60;
@@ -115,14 +118,23 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (val
 }
 
 export default function App() {
+  const { user, isConfigured, signOut } = useAuth();
   const initialProject = useMemo(loadProject, []);
+
   const [projectName, setProjectName] = useState(initialProject.name);
   const [cells, setCells] = useState(initialProject.cells);
   const [settings, setSettings] = useState(initialProject.settings);
+  const [currentCloudProjectId, setCurrentCloudProjectId] = useState<string | null>(null);
+
   const [tool, setTool] = useState<EditorTool>("draw");
   const [fitSignal, setFitSignal] = useState(0);
   const [toast, setToast] = useState<ToastState | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving">("saved");
+
+  const [isAuthOpen, setIsAuthOpen] = useState(false);
+  const [authInitialMode, setAuthInitialMode] = useState<"signin" | "signup" | "forgot" | "setup">("signin");
+  const [isProjectsOpen, setIsProjectsOpen] = useState(false);
+
   const undoStack = useRef<Cell[][]>([]);
   const redoStack = useRef<Cell[][]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -134,6 +146,14 @@ export default function App() {
     setToast({ id: Date.now(), message });
     toastTimeoutRef.current = window.setTimeout(() => setToast(null), 3200);
   }, []);
+
+  const currentDocument: SavedProject = useMemo(() => ({
+    format: "mor-room-planner",
+    version: 1,
+    name: projectName.trim() || "Untitled interior",
+    cells,
+    settings,
+  }), [projectName, cells, settings]);
 
   const commitCells = useCallback((nextCells: Cell[]) => {
     const normalized = normalizeCells(nextCells);
@@ -171,18 +191,11 @@ export default function App() {
   useEffect(() => {
     setSaveStatus("saving");
     const timer = window.setTimeout(() => {
-      const project: SavedProject = {
-        format: "mor-room-planner",
-        version: 1,
-        name: projectName.trim() || "Untitled interior",
-        cells,
-        settings,
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(project));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(currentDocument));
       setSaveStatus("saved");
     }, 300);
     return () => window.clearTimeout(timer);
-  }, [cells, projectName, settings]);
+  }, [currentDocument]);
 
   useEffect(() => () => {
     if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
@@ -212,18 +225,11 @@ export default function App() {
   }, [redo, undo]);
 
   const exportProject = () => {
-    const project: SavedProject = {
-      format: "mor-room-planner",
-      version: 1,
-      name: projectName.trim() || "Untitled interior",
-      cells,
-      settings,
-    };
-    const blob = new Blob([JSON.stringify(project, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify(currentDocument, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     anchor.href = url;
-    anchor.download = `${project.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "mor-room"}.json`;
+    anchor.download = `${currentDocument.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "mor-room"}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
     notify("Project exported as JSON.");
@@ -242,6 +248,7 @@ export default function App() {
       setCells(importedCells);
       setSettings(sanitizeSettings(imported.settings));
       if (typeof imported.name === "string" && imported.name.trim()) setProjectName(imported.name.slice(0, 64));
+      setCurrentCloudProjectId(null);
       setFitSignal((value) => value + 1);
       notify("Project imported successfully.");
     } catch (error) {
@@ -249,8 +256,31 @@ export default function App() {
     }
   };
 
+  const handleLoadCloudProject = (cloudProject: CloudProject) => {
+    const doc = cloudProject.document;
+    if (!doc || !Array.isArray(doc.cells)) {
+      notify("Invalid cloud project document structure.");
+      return;
+    }
+    const loadedCells = normalizeCells(doc.cells);
+    undoStack.current.push(cells);
+    redoStack.current = [];
+    setCells(loadedCells);
+    setSettings(sanitizeSettings(doc.settings));
+    setProjectName(cloudProject.name || doc.name || "Cloud Assembly");
+    setCurrentCloudProjectId(cloudProject.id);
+    setFitSignal((val) => val + 1);
+    notify(`Loaded "${cloudProject.name}" from Cloud.`);
+  };
+
+  const handleSaveSuccess = (cloudProject: CloudProject) => {
+    setCurrentCloudProjectId(cloudProject.id);
+    setProjectName(cloudProject.name);
+  };
+
   const loadExample = () => {
     commitCells(EXAMPLE_CELLS);
+    setCurrentCloudProjectId(null);
     setFitSignal((value) => value + 1);
     notify("Example assembly loaded.");
   };
@@ -274,14 +304,66 @@ export default function App() {
           <span className="brand-mark"><i /><i /><i /></span>
           <div><strong>Room planner</strong></div>
         </div>
+
         <label className="project-title">
           <span>Project</span>
-          <input value={projectName} maxLength={64} onChange={(event) => setProjectName(event.target.value)} aria-label="Project name" />
+          <input
+            value={projectName}
+            maxLength={64}
+            onChange={(event) => setProjectName(event.target.value)}
+            aria-label="Project name"
+          />
+          {currentCloudProjectId && <span className="cloud-indicator" title="Connected to Cloud project"><Icon name="cloud" /> Synced</span>}
         </label>
+
         <div className="top-actions">
           <span className={`save-state ${saveStatus}`}><i />{saveStatus === "saved" ? "Saved locally" : "Saving"}</span>
-          <button type="button" className="header-button" onClick={() => fileInputRef.current?.click()}><Icon name="upload" />Import</button>
-          <button type="button" className="header-button primary" onClick={exportProject}><Icon name="download" />Export</button>
+
+          <button
+            type="button"
+            className="header-button secondary-accent"
+            onClick={() => setIsProjectsOpen(true)}
+            title="Manage cloud saved assemblies"
+          >
+            <Icon name="cloud" />
+            <span className="btn-label">Cloud Projects</span>
+          </button>
+
+          {user ? (
+            <div className="user-menu-pill">
+              <span className="user-email-badge" title={user.email}>
+                <Icon name="user" />
+                <span className="user-email-text">{user.email?.split("@")[0]}</span>
+              </span>
+              <button
+                type="button"
+                className="header-button icon-only danger-hover"
+                onClick={async () => {
+                  await signOut();
+                  setCurrentCloudProjectId(null);
+                  notify("Signed out of your account.");
+                }}
+                title="Sign out"
+              >
+                <Icon name="logout" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="header-button highlight"
+              onClick={() => {
+                setAuthInitialMode(isConfigured ? "signin" : "setup");
+                setIsAuthOpen(true);
+              }}
+            >
+              <Icon name="user" />
+              <span className="btn-label">{isConfigured ? "Sign In" : "Connect DB"}</span>
+            </button>
+          )}
+
+          <button type="button" className="header-button" onClick={() => fileInputRef.current?.click()}><Icon name="upload" /><span className="btn-label">Import</span></button>
+          <button type="button" className="header-button primary" onClick={exportProject}><Icon name="download" /><span className="btn-label">Export</span></button>
           <input
             ref={fileInputRef}
             className="visually-hidden"
@@ -379,13 +461,34 @@ export default function App() {
           <footer className="metrics-strip">
             <div><span>Area</span><strong>{formatNumber(layout.stats.area)} <small>m²</small></strong></div>
             <div><span>Perimeter</span><strong>{formatNumber(layout.stats.perimeter)} <small>m</small></strong></div>
-            <div><span>Floor tiles</span><strong>{layout.stats.floorTiles}</strong></div>
-            <div><span>Wall modules</span><strong>{layout.stats.wallModules}</strong></div>
-            <div><span>Total modules</span><strong>{layout.stats.totalModules}</strong></div>
-            <div><span>Zones</span><strong>{layout.stats.connectedRooms}</strong></div>
+            <div><span>Floor tiles</span><strong>{formatNumber(layout.stats.floorTiles)}</strong></div>
+            <div><span>Wall modules</span><strong>{formatNumber(layout.stats.wallModules)}</strong></div>
+            <div><span>Total modules</span><strong>{formatNumber(layout.stats.totalModules)}</strong></div>
+            <div><span>Zones</span><strong>{formatNumber(layout.stats.connectedRooms)}</strong></div>
           </footer>
         </section>
       </main>
+
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        initialMode={authInitialMode}
+        onSuccessNotice={notify}
+      />
+
+      <ProjectsModal
+        isOpen={isProjectsOpen}
+        onClose={() => setIsProjectsOpen(false)}
+        currentDocument={currentDocument}
+        currentCloudProjectId={currentCloudProjectId}
+        onLoadProject={handleLoadCloudProject}
+        onSaveSuccess={handleSaveSuccess}
+        onNotice={notify}
+        onOpenAuth={() => {
+          setAuthInitialMode(isConfigured ? "signin" : "setup");
+          setIsAuthOpen(true);
+        }}
+      />
 
       {toast && <div key={toast.id} className="toast" role="status"><span />{toast.message}</div>}
     </div>

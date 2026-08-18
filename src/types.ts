@@ -80,3 +80,13 @@ export interface SavedProject {
   cells: Cell[];
   settings: BuildSettings;
 }
+
+export interface CloudProject {
+  id: string;
+  user_id: string;
+  name: string;
+  document: SavedProject;
+  created_at: string;
+  updated_at: string;
+}
+
