@@ -203,9 +203,9 @@ export function ThreeViewport({ layout, settings, fitSignal, tool, onCommit, onN
     if (!host) return;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x131715);
+    scene.background = new THREE.Color(0x16161a);
     // Keep fog beyond the orbit limit so zooming out never fades the model to black.
-    scene.fog = new THREE.Fog(0x131715, 240, 700);
+    scene.fog = new THREE.Fog(0x16161a, 240, 700);
     const camera = new THREE.PerspectiveCamera(38, 1, 0.1, 500);
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
@@ -285,14 +285,14 @@ export function ThreeViewport({ layout, settings, fitSignal, tool, onCommit, onN
     rimLight.position.set(-20, 12, -24);
     scene.add(rimLight);
 
-    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x202622, roughness: 0.96 });
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x1d1d21, roughness: 0.96 });
     const groundGeometry = new THREE.PlaneGeometry(1000, 1000);
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -0.07;
     ground.receiveShadow = true;
     scene.add(ground);
-    const grid = new THREE.GridHelper(800, 400, 0x4f5c52, 0x303832);
+    const grid = new THREE.GridHelper(800, 400, 0x3a3a40, 0x26262b);
     grid.position.y = -0.005;
     scene.add(grid);
 
