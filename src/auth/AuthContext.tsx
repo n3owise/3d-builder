@@ -1,24 +1,16 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from "react";
 import type { User, Session, AuthError } from "@supabase/supabase-js";
-import {
-  getSupabaseClient,
-  getSupabaseCredentials,
-  saveCustomSupabaseCredentials,
-  clearCustomSupabaseCredentials,
-} from "../lib/supabase";
+import { getSupabaseClient, getSupabaseCredentials } from "../lib/supabase";
 
 export interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
   isConfigured: boolean;
-  credentialSource: "env" | "local" | "default" | "none";
   signUp: (email: string, password: string) => Promise<{ error: AuthError | Error | null; user: User | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null; session: Session | null }>;
   signOut: () => Promise<{ error: AuthError | Error | null }>;
   resetPassword: (email: string) => Promise<{ error: AuthError | Error | null }>;
-  setCustomCredentials: (url: string, anonKey: string) => void;
-  removeCustomCredentials: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -33,7 +25,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true);
     const creds = getSupabaseCredentials();
     setConfigState(creds);
-
     const client = getSupabaseClient();
     if (!client) {
       setUser(null);
@@ -144,16 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const setCustomCredentials = (url: string, anonKey: string) => {
-    saveCustomSupabaseCredentials(url, anonKey);
-    initAuth();
-  };
-
-  const removeCustomCredentials = () => {
-    clearCustomSupabaseCredentials();
-    initAuth();
-  };
-
   return (
     <AuthContext.Provider
       value={{
@@ -161,13 +142,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         session,
         loading,
         isConfigured: configState.isConfigured,
-        credentialSource: configState.source,
         signUp,
         signIn,
         signOut,
         resetPassword,
-        setCustomCredentials,
-        removeCustomCredentials,
       }}
     >
       {children}
