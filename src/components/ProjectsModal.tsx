@@ -18,7 +18,6 @@ interface ProjectsModalProps {
   onLoadProject: (cloudProject: CloudProject) => void;
   onSaveSuccess: (cloudProject: CloudProject) => void;
   onNotice: (message: string) => void;
-  onOpenAuth: () => void;
 }
 
 export function ProjectsModal({
@@ -29,7 +28,6 @@ export function ProjectsModal({
   onLoadProject,
   onSaveSuccess,
   onNotice,
-  onOpenAuth,
 }: ProjectsModalProps) {
   const { user, isConfigured } = useAuth();
   const [projects, setProjects] = useState<CloudProject[]>([]);
@@ -63,10 +61,7 @@ export function ProjectsModal({
 
   const handleSaveNew = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      onOpenAuth();
-      return;
-    }
+    if (!user) return;
     if (!saveName.trim()) return;
 
     setSaving(true);
@@ -173,7 +168,7 @@ export function ProjectsModal({
               <p>
                 Create an account or sign in to sync your room layouts across multiple browsers and devices.
               </p>
-              <button type="button" className="submit-btn primary" onClick={() => { onClose(); onOpenAuth(); }}>
+              <button type="button" className="submit-btn primary" onClick={onClose}>
                 Sign In / Register
               </button>
             </div>

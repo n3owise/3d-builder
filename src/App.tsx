@@ -3,7 +3,7 @@ import { Icon } from "./icons";
 import { buildLayout, normalizeCells, rectangleCells } from "./layout";
 import type { BuildSettings, Cell, CloudProject, EditorTool, SavedProject, Variant } from "./types";
 import { useAuth } from "./auth/AuthContext";
-import { AuthModal } from "./components/AuthModal";
+import { AuthGate } from "./components/AuthGate";
 import { ProjectsModal } from "./components/ProjectsModal";
 
 const STORAGE_KEY = "mor-room-planner:project:v1";
@@ -118,7 +118,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: (val
 }
 
 export default function App() {
-  const { user, isConfigured, signOut } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const initialProject = useMemo(loadProject, []);
 
   const [projectName, setProjectName] = useState(initialProject.name);
@@ -131,8 +131,6 @@ export default function App() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving">("saved");
 
-  const [isAuthOpen, setIsAuthOpen] = useState(false);
-  const [authInitialMode, setAuthInitialMode] = useState<"signin" | "signup" | "forgot" | "setup">("signin");
   const [isProjectsOpen, setIsProjectsOpen] = useState(false);
 
   const undoStack = useRef<Cell[][]>([]);
@@ -297,6 +295,19 @@ export default function App() {
     { value: "C" as const, label: "Clay" },
   ];
 
+  if (loading) {
+    return (
+      <div className="app-splash">
+        <span className="brand-mark"><i /><i /><i /></span>
+        <span>Loading workspace</span>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthGate onSuccessNotice={notify} />;
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -329,7 +340,7 @@ export default function App() {
             <span className="btn-label">Cloud Projects</span>
           </button>
 
-          {user ? (
+          {user && (
             <div className="user-menu-pill">
               <span className="user-email-badge" title={user.email}>
                 <Icon name="user" />
@@ -348,18 +359,6 @@ export default function App() {
                 <Icon name="logout" />
               </button>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="header-button highlight"
-              onClick={() => {
-                setAuthInitialMode(isConfigured ? "signin" : "setup");
-                setIsAuthOpen(true);
-              }}
-            >
-              <Icon name="user" />
-              <span className="btn-label">{isConfigured ? "Sign In" : "Connect DB"}</span>
-            </button>
           )}
 
           <button type="button" className="header-button" onClick={() => fileInputRef.current?.click()}><Icon name="upload" /><span className="btn-label">Import</span></button>
@@ -469,13 +468,6 @@ export default function App() {
         </section>
       </main>
 
-      <AuthModal
-        isOpen={isAuthOpen}
-        onClose={() => setIsAuthOpen(false)}
-        initialMode={authInitialMode}
-        onSuccessNotice={notify}
-      />
-
       <ProjectsModal
         isOpen={isProjectsOpen}
         onClose={() => setIsProjectsOpen(false)}
@@ -484,10 +476,6 @@ export default function App() {
         onLoadProject={handleLoadCloudProject}
         onSaveSuccess={handleSaveSuccess}
         onNotice={notify}
-        onOpenAuth={() => {
-          setAuthInitialMode(isConfigured ? "signin" : "setup");
-          setIsAuthOpen(true);
-        }}
       />
 
       {toast && <div key={toast.id} className="toast" role="status"><span />{toast.message}</div>}

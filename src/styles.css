@@ -174,6 +174,98 @@ button:disabled { opacity: .38; cursor: not-allowed; }
 .metrics-strip strong { margin-top: 6px; color: #eff1ed; font-family: "Arial Narrow", "Avenir Next Condensed", sans-serif; font-size: 16px; font-weight: 700; white-space: nowrap; }
 .metrics-strip small { color: #8d958e; font-size: 9px; }
 
+/* Auth Gate */
+.auth-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  overflow-y: auto;
+  display: grid;
+  place-items: center;
+  padding: 28px 20px;
+  background:
+    radial-gradient(1100px 600px at 50% -10%, rgba(198, 211, 110, 0.07), transparent 60%),
+    radial-gradient(900px 500px at 85% 110%, rgba(207, 92, 61, 0.1), transparent 60%),
+    #141815;
+}
+
+.auth-gate-inner {
+  width: 100%;
+  max-width: 430px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 18px 0;
+}
+
+.gate-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #f0f2ed;
+}
+
+.gate-brand .brand-mark {
+  width: 40px;
+  height: 40px;
+  gap: 3px;
+}
+
+.gate-brand strong {
+  font-family: "Arial Narrow", "Avenir Next Condensed", sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.gate-tagline {
+  margin: -6px 0 0;
+  color: #8b938c;
+  font-size: 12px;
+  text-align: center;
+}
+
+.gate-card {
+  width: 100%;
+  background: #1f2420;
+  border: 1px solid #3a423b;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+
+.gate-footnote {
+  margin: 0;
+  max-width: 340px;
+  color: #6d756e;
+  font-size: 10.5px;
+  line-height: 1.6;
+  text-align: center;
+}
+
+.app-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  color: #7b847d;
+  background: #141815;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.app-splash .brand-mark {
+  width: 44px;
+  height: 44px;
+  gap: 4px;
+}
+
 /* Modal & Auth Styles */
 .modal-backdrop {
   position: fixed;
