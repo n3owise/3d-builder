@@ -3,7 +3,10 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 const LOCAL_STORAGE_URL_KEY = "3d_builder_supabase_url";
 const LOCAL_STORAGE_KEY_KEY = "3d_builder_supabase_anon_key";
 
-export function getSupabaseCredentials(): { url: string; anonKey: string; isConfigured: boolean; source: "env" | "local" | "none" } {
+const DEFAULT_URL = "https://bbyiguyyxuvlwfckjhdn.supabase.co";
+const DEFAULT_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJieWlndXl5eHV2bHdmY2tqaGRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcwMzUxNTUsImV4cCI6MjEwMjYxMTE1NX0.YGZPlVIm4vROTv5SYZ06-x7JBwunLoVCnpBjnyujQRk";
+
+export function getSupabaseCredentials(): { url: string; anonKey: string; isConfigured: boolean; source: "env" | "local" | "default" | "none" } {
   const envUrl = import.meta.env.VITE_SUPABASE_URL?.trim() || "";
   const envKey = (import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY)?.trim() || "";
 
@@ -16,6 +19,10 @@ export function getSupabaseCredentials(): { url: string; anonKey: string; isConf
 
   if (localUrl && localKey) {
     return { url: localUrl, anonKey: localKey, isConfigured: true, source: "local" };
+  }
+
+  if (DEFAULT_URL && DEFAULT_ANON_KEY) {
+    return { url: DEFAULT_URL, anonKey: DEFAULT_ANON_KEY, isConfigured: true, source: "default" };
   }
 
   return { url: "", anonKey: "", isConfigured: false, source: "none" };

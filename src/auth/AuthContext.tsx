@@ -12,7 +12,7 @@ export interface AuthContextType {
   session: Session | null;
   loading: boolean;
   isConfigured: boolean;
-  credentialSource: "env" | "local" | "none";
+  credentialSource: "env" | "local" | "default" | "none";
   signUp: (email: string, password: string) => Promise<{ error: AuthError | Error | null; user: User | null }>;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null; session: Session | null }>;
   signOut: () => Promise<{ error: AuthError | Error | null }>;
